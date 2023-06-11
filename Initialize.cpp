@@ -115,19 +115,23 @@ double maxmod(double a, double b){
 	}
 }	
 
-void ComputeLimitedSlopes_Prim(std::vector<Cell> &cell)
+void ComputeLimitedSlopes_PrimVar(std::vector<Cell> &cell)
 {
 	double deltaU_left, deltaU_right, deltaU_central, slope1, slope2;
 	
 	for(int i=0; i<=nx+1; i++){
 		for(int n=0; n<=ND+1; n++){
-			cell[i].slope[n] = 0.0;
+			cell[i].slope_prim_var[n] = 0.0;
 		}
 	}
 	
-	std::vector<double> prim(ND+1,0);
-	
-	for(int i=1; i<=nx; i++){
+	std::vector<double> prim(ND+2,0.0);
+
+	for(int i=0; i<=nx+1; i++){
+		ComputePrimitiveVariables(cell[i].cons_var, prim);
+	}
+
+	for(int i=0; i<=nx+1; i++){
 		for(int n=0; n<=ND+1; n++){
 			deltaU_left =  cell[i].cons_var[n]   - cell[i-1].cons_var[n];
 			deltaU_right = cell[i+1].cons_var[n] - cell[i].cons_var[n];
@@ -137,7 +141,7 @@ void ComputeLimitedSlopes_Prim(std::vector<Cell> &cell)
 
 			// Minmod limiter	
 			slope1 = minmod(deltaU_left    , deltaU_right);
-			cell[i].slope[n] = slope1;	
+			cell[i].slope_prim_var[n] = slope1;	
 
 			// Van Leer MC limiter
 			//deltaU_central = cell[i+1].cons_var[n] - cell[i-1].cons_var[n];
@@ -154,7 +158,7 @@ void ComputeLimitedSlopes_ConsVar(std::vector<Cell> &cell)
 	
 	for(int i=0; i<=nx+1; i++){
 		for(int n=0; n<=ND+1; n++){
-			cell[i].slope[n] = 0.0;
+			cell[i].slope_cons_var[n] = 0.0;
 		}
 	}
 		
@@ -168,7 +172,7 @@ void ComputeLimitedSlopes_ConsVar(std::vector<Cell> &cell)
 
 			// Minmod limiter	
 			slope1 = minmod(deltaU_left    , deltaU_right);
-			cell[i].slope[n] = slope1;	
+			cell[i].slope_cons_var[n] = slope1;	
 
 			// Van Leer MC limiter
 			//deltaU_central = cell[i+1].cons_var[n] - cell[i-1].cons_var[n];
@@ -179,12 +183,13 @@ void ComputeLimitedSlopes_ConsVar(std::vector<Cell> &cell)
 }
 
 template <class T>
-void ComputePrimVariables(T &Q, std::vector<double> &prim)
+void ComputePrimitiveVariables(T &Q, std::vector<double> &prim)
 {
 	assert(Q[0] > 0.0);
 	assert(Q[ND+1] > 0.0);
-	prim[0] = Q[1]/Q[0]; // u-velocity
-	prim[1] = (Q[ND+1] - 0.5*Q[0]*prim[0]*prim[0])*(gamma_air-1.0); // pressure
+	prim[0] = Q[0];      // density
+	prim[1] = Q[1]/Q[0]; // u-velocity
+	prim[ND+1] = (Q[ND+1] - 0.5*prim[0]*prim[1]*prim[1])*(gamma_air-1.0); // pressure
 }
 
 void ComputeFluxes(const std::vector<double> &Q, std::vector<double> &flux)
@@ -250,20 +255,20 @@ void ComputeHLLCFluxOnFace(const std::vector<double> &QL, const std::vector<doub
 
 	double rhoL, uL, pL, cL, rhoR, uR, pR, cR, c_hat, u_hat;
 	double SL, SR, S_star;
-	std::vector<double> prim(ND+1,0.0), FL(ND+2,0.0), FR(ND+2,0.0);
+	std::vector<double> prim(ND+2,0.0), FL(ND+2,0.0), FR(ND+2,0.0);
 	std::vector<double> FL_star(ND+2,0.0), FR_star(ND+2,0.0), QL_star(ND+2,0.0), QR_star(ND+2,0.0);
 	
-	ComputePrimVariables(QL,prim);
+	ComputePrimitiveVariables(QL,prim);
 
-	rhoL = QL[0];
-	uL   = prim[0];
-	pL   = prim[1];
+	rhoL = prim[0];
+	uL   = prim[1];
+	pL   = prim[2];
 	
-	ComputePrimVariables(QR,prim);
+	ComputePrimitiveVariables(QR,prim);
 
-	rhoR = QR[0];
-	uR   = prim[0];
-	pR   = prim[1];
+	rhoR = prim[0];
+	uR   = prim[1];
+	pR   = prim[2];
 
 	cL = sqrt(gamma_air*pL/rhoL);
 	cR = sqrt(gamma_air*pR/rhoR);
@@ -299,8 +304,8 @@ void ComputeLeftAndRightStatesAndComputeFlux(std::vector<Cell> &cell, std::vecto
 	for(int i=2;i<=nx; i++){
 		// Compute left and right states. ie. all the conservative variables
 		for(int n=0;n<=ND+1;n++){
-			QL[n] = cell[i-1].cons_var[n] + 0.5*cell[i-1].slope[n];  
-			QR[n] = cell[i].cons_var[n] - 0.5*cell[i].slope[n];
+			QL[n] = cell[i-1].cons_var[n] + 0.5*cell[i-1].slope_cons_var[n];  
+			QR[n] = cell[i].cons_var[n] - 0.5*cell[i].slope_cons_var[n];
 		}
 		//printf("%d, %g, %g, %g\n", i, QL[0], QL[1], QL[2]);
 		//printf("%d, %g, %g, %g\n", i, QR[0], QR[1], QR[2]);
@@ -320,14 +325,14 @@ void BoundaryConditions(std::vector<Cell> &cell)
 
 double ComputeTimeStep(const std::vector<Cell> &cell, const double CFL)
 {
-	std::vector<double> prim(ND+1,0.0);
+	std::vector<double> prim(ND+2,0.0);
 	std::vector<double> uvel(nx+2,0.0);
 	std::vector<double> spdsnd(nx+2,0.0);
 	
 	for(int i=0;i<=nx+1;i++){
-		ComputePrimVariables(cell[i].cons_var, prim);
-		uvel[i]    = prim[0];
-		spdsnd[i] = sqrt(gamma_air*prim[1]/cell[i].cons_var[0]);
+		ComputePrimitiveVariables(cell[i].cons_var, prim);
+		uvel[i]    = prim[1];
+		spdsnd[i] = sqrt(gamma_air*prim[2]/prim[0]);
 	}
 
 	auto uvel_max   = std::max_element(uvel.begin(), uvel.end());
