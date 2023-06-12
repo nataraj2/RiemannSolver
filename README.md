@@ -10,7 +10,7 @@ initial condition for the simulation can be specified. There is a Makefile in ea
 directories.
 
 # Compilation and running 
-`cd Exec/Sod`
+`cd Exec/Sod` 
 `sh run_RiemannSolver.sh`
 
 # Visualization
