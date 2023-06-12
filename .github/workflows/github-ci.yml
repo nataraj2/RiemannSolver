@@ -34,5 +34,5 @@ jobs:
     - name: Run Riemann Solver with serial executable
       run: |
         cd Exec/Sod
-		pwd
+        pwd
         ./riemann1d.ex
