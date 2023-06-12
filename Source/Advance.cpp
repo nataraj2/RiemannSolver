@@ -9,7 +9,7 @@
 int ND, nx, ny;
 double xmin, xmax;
 double gamma_air;
-double dx, dt;
+double dx, dt, t_end;
 
 std::vector<double> x;
 std::vector<Cell> cell;
@@ -54,32 +54,28 @@ void ComputeLimitedSlopes_PrimVar(std::vector<Cell> &cell)
 	
 	for(int i=0; i<=nx+1; i++){
 		for(int n=0; n<=ND+1; n++){
-			cell[i].slope_prim_var[n] = 0.0;
+			cell[i].slope[n] = 0.0;
 		}
 	}
 	
-	std::vector<double> prim(ND+2,0.0);
-
 	for(int i=0; i<=nx+1; i++){
-		ComputePrimitiveVariables(cell[i].cons_var, prim);
+		ComputePrimitiveVariables(cell[i].cons_var, cell[i].prim_var);
 	}
+
 
 	for(int i=0; i<=nx+1; i++){
 		for(int n=0; n<=ND+1; n++){
-			deltaU_left =  cell[i].cons_var[n]   - cell[i-1].cons_var[n];
-			deltaU_right = cell[i+1].cons_var[n] - cell[i].cons_var[n];
-			/*slope1 = minmod(deltaU_left    , 2.0*deltaU_right);
-			slope2 = minmod(2.0*deltaU_left, deltaU_right);
-			cell[i].slope[n] = maxmod(slope1, slope2);*/
+			deltaU_left =  cell[i].prim_var[n]   - cell[i-1].prim_var[n];
+			deltaU_right = cell[i+1].prim_var[n] - cell[i].prim_var[n];
+
+			// Superbee limiter
+			//slope1 = minmod(deltaU_left    , 2.0*deltaU_right);
+			//slope2 = minmod(2.0*deltaU_left, deltaU_right);
+			//cell[i].slope[n] = maxmod(slope1, slope2);
 
 			// Minmod limiter	
-			slope1 = minmod(deltaU_left    , deltaU_right);
-			cell[i].slope_prim_var[n] = slope1;	
-
-			// Van Leer MC limiter
-			//deltaU_central = cell[i+1].cons_var[n] - cell[i-1].cons_var[n];
-			//slope1 = minmod(deltaU_central, 2.0*deltaU_left, 2.0*deltaU_right);
-			//cell[i].slope[n] = slope1;	 
+			slope1 = minmod(deltaU_left, deltaU_right);
+			cell[i].slope[n] = slope1;	
 		}
 	}	
 }
@@ -91,7 +87,7 @@ void ComputeLimitedSlopes_ConsVar(std::vector<Cell> &cell)
 	
 	for(int i=0; i<=nx+1; i++){
 		for(int n=0; n<=ND+1; n++){
-			cell[i].slope_cons_var[n] = 0.0;
+			cell[i].slope[n] = 0.0;
 		}
 	}
 		
@@ -105,7 +101,7 @@ void ComputeLimitedSlopes_ConsVar(std::vector<Cell> &cell)
 
 			// Minmod limiter	
 			slope1 = minmod(deltaU_left    , deltaU_right);
-			cell[i].slope_cons_var[n] = slope1;	
+			cell[i].slope[n] = slope1;	
 
 			// Van Leer MC limiter
 			//deltaU_central = cell[i+1].cons_var[n] - cell[i-1].cons_var[n];
@@ -115,8 +111,8 @@ void ComputeLimitedSlopes_ConsVar(std::vector<Cell> &cell)
 	}	
 }
 
-template <class T>
-void ComputePrimitiveVariables(T &Q, std::vector<double> &prim)
+template <class T1, class T2>
+void ComputePrimitiveVariables(T1 &Q, T2 &prim)
 {
 	assert(Q[0] > 0.0);
 	assert(Q[ND+1] > 0.0);
@@ -228,7 +224,7 @@ void ComputeHLLCFluxOnFace(const std::vector<double> &QL, const std::vector<doub
 	ComputeHLLCFlux(SL, SR, FL, FR, S_star, FL_star, FR_star, iface);
 }
 
-void ComputeLeftAndRightStatesAndComputeFlux(std::vector<Cell> &cell, std::vector<Face> &face)
+void ComputeLeftAndRightConsVarStatesAndComputeFlux(std::vector<Cell> &cell, std::vector<Face> &face)
 {
 
 	std::vector<double> QL(ND+2,0.0), QR(ND+2,0.0);
@@ -237,14 +233,43 @@ void ComputeLeftAndRightStatesAndComputeFlux(std::vector<Cell> &cell, std::vecto
 	for(int i=2;i<=nx; i++){
 		// Compute left and right states. ie. all the conservative variables
 		for(int n=0;n<=ND+1;n++){
-			QL[n] = cell[i-1].cons_var[n] + 0.5*cell[i-1].slope_cons_var[n];  
-			QR[n] = cell[i].cons_var[n] - 0.5*cell[i].slope_cons_var[n];
+			QL[n] = cell[i-1].cons_var[n] + 0.5*cell[i-1].slope[n];  
+			QR[n] = cell[i].cons_var[n] - 0.5*cell[i].slope[n];
 		}
-		//printf("%d, %g, %g, %g\n", i, QL[0], QL[1], QL[2]);
-		//printf("%d, %g, %g, %g\n", i, QR[0], QR[1], QR[2]);
 		ComputeHLLCFluxOnFace(QL, QR, face[i]);	
 	}
 }
+
+void ComputeConservativeVariables(const std::vector<double> &P, std::vector<double> &Q) 
+{
+	
+	Q[0] = P[0];
+	Q[1] = P[0]*P[1];
+	Q[ND+1] = P[ND+1]/(gamma_air-1) + 0.5*P[0]*P[1]*P[1];
+	
+}
+
+void ComputeLeftAndRightPrimVarStatesAndComputeFlux(std::vector<Cell> &cell, std::vector<Face> &face)
+{
+
+	std::vector<double> PL(ND+2,0.0), PR(ND+2,0.0);
+	std::vector<double> QL(ND+2,0.0), QR(ND+2,0.0);
+
+	// Face loop over all faces
+	for(int i=2;i<=nx; i++){
+		// Compute left and right states. ie. all the conservative variables
+		for(int n=0;n<=ND+1;n++){
+			PL[n] = cell[i-1].prim_var[n] + 0.5*cell[i-1].slope[n];  
+			PR[n] = cell[i].prim_var[n] - 0.5*cell[i].slope[n];
+		}
+		ComputeConservativeVariables(PL, QL);
+		ComputeConservativeVariables(PR, QR);
+
+		ComputeHLLCFluxOnFace(QL, QR, face[i]);	
+	}
+}
+
+
 
 void BoundaryConditions(std::vector<Cell> &cell)
 {

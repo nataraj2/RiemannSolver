@@ -14,12 +14,19 @@ int main(){
 	
 	// Time advance
 
-	double t_end = 0.02, time = 0.0;
+	double time = 0.0;
+
+	int niter = t_end/dt;
 	
-	for(int iter=1; iter<=400; iter++){
+	for(int iter=1; iter<niter; iter++){
 		//dt = ComputeTimeStep(cell, CFL);
-		ComputeLimitedSlopes_ConsVar(cell);
-		ComputeLeftAndRightStatesAndComputeFlux(cell, face);
+
+		//ComputeLimitedSlopes_ConsVar(cell);
+		//ComputeLeftAndRightConsVarStatesAndComputeFlux(cell, face);
+	
+		ComputeLimitedSlopes_PrimVar(cell);
+		ComputeLeftAndRightPrimVarStatesAndComputeFlux(cell, face);
+
 		std::cout << "Iteration is " << iter << " dt = " << dt << " " << "time = " << time << "\n";
 		for(int i=2; i<=nx-1; i++){
 			for(int n=0; n<=ND+1; n++){

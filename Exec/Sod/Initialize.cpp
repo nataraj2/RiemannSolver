@@ -9,14 +9,15 @@ void Initialize()
 {
 
     ND = 1;
-    nx = 501;
+    nx = 401;
     xmin = -10.0, xmax = 10.0;
     gamma_air = 1.4;
 
     double rhoL = 1.0, pL = 100000.0, uL = 0.0;
     double rhoR = 0.125, pR = 10000.0, uR = 0.0;
 	
-	dt = 2.5e-5;
+	dt = 1.25e-5;
+	t_end = 0.01;
 
     x.resize(nx+2);
     cell.resize(nx+2);

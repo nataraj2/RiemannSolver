@@ -14,10 +14,11 @@ void Initialize()
     gamma_air = 1.4;
 
     double rhoL = 1.0, pL = 1000.0, uL = 0.0;
-    double rhoC = 1.0, pC = 10.0  , uC = 0.0;
+    double rhoC = 1.0, pC = 0.01  , uC = 0.0;
     double rhoR = 1.0, pR = 100.0 , uR = 0.0;
 	
 	dt = 2.5e-5;
+	t_end = 0.038;
 
     x.resize(nx+2);
     cell.resize(nx+2);
