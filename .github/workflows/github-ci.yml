@@ -33,8 +33,6 @@ jobs:
        ls
     - name: Run Riemann Solver with serial executable
       run: |
-        if [ "${{ matrix.compiler }}" = "serial" ]; then
-          ./
-        else
-          ./riemann1d.ex
-        fi
+        cd Exec/Sod
+		pwd
+        ./riemann1d.ex
