@@ -1,0 +1,41 @@
+name: Riemann solver build and test
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        compiler: [serial]
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Set up build environment
+      uses: actions/setup-node@v2
+      with:
+        node-version: '16.x'
+
+    - name: Install serial/parallel compiler
+      run: |
+        if [ "${{ matrix.compiler }}" = "serial" ]; then
+          sudo apt-get install g++
+        else
+          sudo apt-get install g++-9
+        fi
+    - name: Run Sod test case
+      run: |
+       cd Exec/Sod
+       make
+       ls
+    - name: Run Riemann Solver with serial executable
+      run: |
+        cd Exec
+        if [ "${{ matrix.compiler }}" = "serial" ]; then
+          ./
+        else
+          ./riemann1d.ex
+        fi
