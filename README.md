@@ -21,7 +21,7 @@ function of time.
 # Results for the test cases
 ## 1. Sod shock tube test case
 
-The domain is `-10 < x < 10` with number of cells in the domain is 401, and a time step of `dt=1.25e-5 s`. The 
+The domain is `-10 < x < 10` with 401 cells in the domain, and a time step of `dt=1.25e-5 s`. The 
 end time is `t=0.01 s`. The initial condition is   
 `(\rho, u, p) = (1.0, 0.0, 100000.0)` for `x<=0`   
 `(\rho, u, p) = (0.125, 0.0, 10000.0)` for `x>0` 
