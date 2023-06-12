@@ -18,3 +18,15 @@ There is a `Results` directory in each test case directory. It contains a Python
 `PlotSolution.py`. `python PlotSolution.py` will display a movie of the density as a 
 function of time.
 
+# Results for the test cases
+## Sod shock tube test case
+
+The domain is `-10 < x < 10`. The initial condition is 
+`(\rho, u, p) = (1.0, 0.0, 100000.0)` for `x<=0`   
+`(\rho, u, p) = (0.125, 0.0, 10000.0)` for `x>0` 
+
+![SodDensity](Exec/Sod/Results/Comparison_Density.png)  
+![SodVelocity](Exec/Sod/Results/Comparison_Velocity.png)  
+![SodPressure](Exec/Sod/Results/Comparison_Pressure.png)
+
+
