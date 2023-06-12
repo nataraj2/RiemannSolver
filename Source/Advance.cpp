@@ -2,7 +2,7 @@
 #include<vector>
 #include <cassert>
 #include <cmath>
-//#include <algorithm>
+#include <algorithm>
 
 #include "Riemann.H"
 
