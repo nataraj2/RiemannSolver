@@ -18,7 +18,7 @@ int main(){
 
 	int niter = t_end/dt;
 	
-	for(int iter=1; iter<niter; iter++){
+	for(int iter=1; iter<=niter; iter++){
 		//dt = ComputeTimeStep(cell, CFL);
 
 		//ComputeLimitedSlopes_ConsVar(cell);
@@ -27,7 +27,6 @@ int main(){
 		ComputeLimitedSlopes_PrimVar(cell);
 		ComputeLeftAndRightPrimVarStatesAndComputeFlux(cell, face);
 
-		std::cout << "Iteration is " << iter << " dt = " << dt << " " << "time = " << time << "\n";
 		for(int i=2; i<=nx-1; i++){
 			for(int n=0; n<=ND+1; n++){
 				cell[i].cons_var[n] = cell[i].cons_var[n] - dt*(face[i+1].flux[n]-face[i].flux[n])/dx;
@@ -38,6 +37,7 @@ int main(){
 			WriteSolution(cell, iter/freq);
 		}
 		time = time + dt;
+		std::cout << "Iteration is " << iter << " dt = " << dt << " " << "time = " << time << "\n";
 	}
 	return 0;
 
