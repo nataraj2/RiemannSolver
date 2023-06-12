@@ -25,8 +25,7 @@ The domain is `-10 < x < 10`. The initial condition is
 `(\rho, u, p) = (1.0, 0.0, 100000.0)` for `x<=0`   
 `(\rho, u, p) = (0.125, 0.0, 10000.0)` for `x>0` 
 
-<img src="Exec/Sod/Results/Comparison_Density.png" alt="Image" width="300">
-<img src="Exec/Sod/Results/Comparison_Velocity.png" alt="Image" width="300">
+<img src="Exec/Sod/Results/Comparison_Density.png" alt="Image" width="300"><img src="Exec/Sod/Results/Comparison_Velocity.png" alt="Image" width="300">  
 <img src="Exec/Sod/Results/Comparison_Pressure.png" alt="Image" width="300">
 
 
