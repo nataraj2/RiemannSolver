@@ -34,6 +34,7 @@ $$
 \end{cases}
 $$
 
+<img src="Exec/Sod/Results/SodShockTubeProblem.gif?raw=true&v=100" alt="your_alternative_text" width="100%" height="100%" loop="true" autoplay="true">
 
 <img src="Exec/Sod/Results/Comparison_Density.png" alt="Image" width="300"><img src="Exec/Sod/Results/Comparison_Velocity.png" alt="Image" width="300">  
 <img src="Exec/Sod/Results/Comparison_Pressure.png" alt="Image" width="300">
