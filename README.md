@@ -32,6 +32,14 @@ $$
 \frac{{\partial^2 u}}{{\partial t^2}} = c^2 \frac{{\partial^2 u}}{{\partial x^2}}
 $$
 
+$$
+X(m,n)=\begin{cases}
+x(n),\\
+x(n-1)\\
+x(n-1)
+\end{cases}
+$$
+
 
 <img src="Exec/Sod/Results/Comparison_Density.png" alt="Image" width="300"><img src="Exec/Sod/Results/Comparison_Velocity.png" alt="Image" width="300">  
 <img src="Exec/Sod/Results/Comparison_Pressure.png" alt="Image" width="300">
