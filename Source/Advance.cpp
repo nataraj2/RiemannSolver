@@ -156,36 +156,45 @@ void ComputeF_star(const std::vector<double> &F, const std::vector<double> &Q,
 	}
 }
 
-void ComputeHLLCFlux(const double SL, const double SR, 
+std::vector<double> ComputeHLLCFlux(const double SL, const double SR, 
 					 const std::vector<double> &FL, const std::vector<double> &FR, 
-					 const double S_star, const std::vector<double> &FL_star, const std::vector<double> &FR_star, 
-					 Face &iface)
+					 const double S_star, const std::vector<double> &FL_star, const std::vector<double> &FR_star)
 {
+		std::vector<double> flux(ND+2,0.0);
+
 		if(0.0 <= SL){
-			iface.flux = FL;
+			flux = FL;
 		}
 		else if(SL<= 0.0 and 0.0 <=S_star){
-			iface.flux = FL_star;
+			flux = FL_star;
 		}
 		else if(S_star <=0.0 and 0.0 <= SR){
-			iface.flux = FR_star;
+			flux = FR_star;
 		}
 		else if(0.0 >= SR){
-			iface.flux = FR;
+			flux = FR;
 		}
 		else{
 			std::cout << "Reached HLLC flux unknown" << "\n";
 			exit(1);
 		}
+
+		return flux;
 }
 
-void ComputeHLLCFluxOnFace(const std::vector<double> &QL, const std::vector<double> &QR, Face &iface)
+std::vector<double> ComputeHLLCFluxOnFace(const double rho_l, const double rhou_l, const double E_l,
+    const double rho_r, const double rhou_r, const double E_r)
 {
 
 	double rhoL, uL, pL, cL, rhoR, uR, pR, cR, c_hat, u_hat;
 	double SL, SR, S_star;
 	std::vector<double> prim(ND+2,0.0), FL(ND+2,0.0), FR(ND+2,0.0);
 	std::vector<double> FL_star(ND+2,0.0), FR_star(ND+2,0.0), QL_star(ND+2,0.0), QR_star(ND+2,0.0);
+
+	std::vector<double> QL(ND+2,0.0), QR(ND+2,0.0);
+
+	QL[0] = rho_l, QL[1] = rhou_l, QL[2] = E_l;
+	QR[0] = rho_r, QR[1] = rhou_r, QR[2] = E_r;
 	
 	ComputePrimitiveVariables(QL,prim);
 
@@ -219,9 +228,11 @@ void ComputeHLLCFluxOnFace(const std::vector<double> &QL, const std::vector<doub
 	ComputeQ_star(QR, S_star, SR, rhoR, uR, pR, QR_star);
 
 	ComputeF_star(FL, QL, QL_star, SL, FL_star);		
-	ComputeF_star(FR, QR, QR_star, SR, FR_star);		
-			
-	ComputeHLLCFlux(SL, SR, FL, FR, S_star, FL_star, FR_star, iface);
+	ComputeF_star(FR, QR, QR_star, SR, FR_star);
+
+	std::vector<double> flux = ComputeHLLCFlux(SL, SR, FL, FR, S_star, FL_star, FR_star);
+
+	return flux;
 }
 
 void ComputeLeftAndRightConsVarStatesAndComputeFlux(std::vector<Cell> &cell, std::vector<Face> &face)
@@ -236,7 +247,9 @@ void ComputeLeftAndRightConsVarStatesAndComputeFlux(std::vector<Cell> &cell, std
 			QL[n] = cell[i-1].cons_var[n] + 0.5*cell[i-1].slope[n];  
 			QR[n] = cell[i].cons_var[n] - 0.5*cell[i].slope[n];
 		}
-		ComputeHLLCFluxOnFace(QL, QR, face[i]);	
+
+		
+		//ComputeHLLCFluxOnFace(QL[0], QL[1], QL[2], QR[0], QR[1], QR[2], face[i]);	
 	}
 }
 
@@ -265,11 +278,9 @@ void ComputeLeftAndRightPrimVarStatesAndComputeFlux(std::vector<Cell> &cell, std
 		ComputeConservativeVariables(PL, QL);
 		ComputeConservativeVariables(PR, QR);
 
-		ComputeHLLCFluxOnFace(QL, QR, face[i]);	
+		face[i].flux = ComputeHLLCFluxOnFace(QL[0], QL[1], QL[2], QR[0], QR[1], QR[2]);	
 	}
 }
-
-
 
 void BoundaryConditions(std::vector<Cell> &cell)
 {

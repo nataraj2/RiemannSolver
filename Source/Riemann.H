@@ -37,13 +37,13 @@ void ComputeQ_star(const std::vector<double> &Q, const double S_star, const doub
 void ComputeF_star(const std::vector<double> &F, const std::vector<double> &Q, 
 				   const std::vector<double> &Q_star, const double S, 
 				   std::vector<double> &F_star);
-void ComputeHLLCFlux(const double SL, const double SR,
+std::vector<double> ComputeHLLCFlux(const double SL, const double SR,
                      const std::vector<double> &FL, const std::vector<double> &FR,
-                     const double S_star, const std::vector<double> &FL_star, const std::vector<double> &FR_star,
-                     Face &iface);
+                     const double S_star, const std::vector<double> &FL_star, const std::vector<double> &FR_star);
 void ComputeLeftAndRightConsVarStatesAndComputeFlux(std::vector<Cell> &cell, std::vector<Face> &face);
 void ComputeLeftAndRightPrimVarStatesAndComputeFlux(std::vector<Cell> &cell, std::vector<Face> &face);
-void ComputeHLLCFluxOnFace(const std::vector<double> &QL, const std::vector<double> &QR, Face &iface);
+std::vector<double> ComputeHLLCFluxOnFace(const double rho_l, const double rhou_l, const double E_l,
+   		 								  const double rho_r, const double rhou_r, const double E_r);
 void BoundaryConditions(std::vector<Cell> &cell);
 double ComputeTimeStep(const std::vector<Cell> &cell, const double CFL);
 void WriteSolution(const std::vector<Cell> &cell, const int iter);
