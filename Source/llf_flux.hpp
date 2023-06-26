@@ -5,9 +5,7 @@
 #include <algorithm>
 #include <array>
 
-//#include "Riemann.H"
-
-int ND = 1;
+namespace Euler{
 
 double minmod(double a, double b);
 template <class T1, class T2>
@@ -167,4 +165,5 @@ std::array<double,3> llf_flux(const double rho_l, const double rhou_l, const dou
 	std::array<double,3> flux = ComputeHLLCFlux(SL, SR, FL, FR, S_star, FL_star, FR_star);
 
 	return flux;
+}
 }

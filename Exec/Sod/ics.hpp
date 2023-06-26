@@ -3,16 +3,18 @@
 #include <cassert>
 #include <cmath>
 
-#include "Riemann.H"
-
-void Initialize(std::vector<double> &rho, std::vector<double> &rhou, std::vector<double> &E)
-{
+namespace Euler{
 
     int ND = 1;
-    nx = 401;
-    xmin = -10.0, xmax = 10.0;
-    gamma_air = 1.4;
+    int nx = 401;
+    double xmin = -10.0, xmax = 10.0;
+    double gamma_air = 1.4;
+	double dx, dt, t_end;
 
+	std::vector<double> x;
+
+void initialize(std::vector<double> &rho, std::vector<double> &rhou, std::vector<double> &E)
+{
     double rhoL = 1.0, pL = 100000.0, uL = 0.0;
     double rhoR = 0.125, pR = 10000.0, uR = 0.0;
 	
@@ -41,5 +43,5 @@ void Initialize(std::vector<double> &rho, std::vector<double> &rhou, std::vector
             E[i] = pR/(gamma_air-1.0) + 0.5*rhoR*uR*uR;
         }
     }
-
+}
 }

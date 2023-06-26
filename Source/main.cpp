@@ -5,12 +5,7 @@
 #include "ics.hpp"
 #include "state.hpp"
 
-int nx, ny;
-double xmin, xmax;
-double gamma_air;
-double dx, dt, t_end;
-
-std::vector<double> x;
+using namespace Euler;
 
 int main(){
 
@@ -21,7 +16,7 @@ int main(){
 
 	std::vector<double> rho, rhou, E;
 
-	Initialize(rho, rhou, E);
+	initialize(rho, rhou, E);
 	state_.dynamic.rho = rho;
 	state_.dynamic.rhou = rhou;
 	state_.dynamic.E = E;

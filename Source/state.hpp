@@ -6,6 +6,8 @@
 
 #include "llf_flux.hpp"
 
+namespace Euler{
+
 struct dynamic_state {
     std::vector<double> rho,  rhou, E;
 };
@@ -148,4 +150,5 @@ void BoundaryConditions(dynamic_state& a_dyn_state)
 	ApplyBC(a_dyn_state.rho);
 	ApplyBC(a_dyn_state.rhou);
 	ApplyBC(a_dyn_state.E);
+}
 }
