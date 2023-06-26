@@ -75,7 +75,7 @@ void state::compute_limited_slopes_consvar()
 }
 
 
-void ComputeLeftAndRightStates(const std::vector<double>& a_var, const int a_n, const int a_i, const std::vector<double>& a_slope,
+void compute_left_and_right_states(const std::vector<double>& a_var, const int a_n, const int a_i, const std::vector<double>& a_slope,
                                       std::vector<double>& a_state_left, std::vector<double>& a_state_right)
 {
     a_state_left[a_n]  = a_var[a_i-1] + 0.5*a_slope[a_i-1];
@@ -99,9 +99,9 @@ void state::compute_flux()
 	for(int i=2;i<=nx; i++){
 
 		// Compute left and right states. ie. for all the conservative variables
-		ComputeLeftAndRightStates(rho,  0, i, rho_slope,  QL, QR);	
-		ComputeLeftAndRightStates(rhou, 1, i, rhou_slope, QL, QR);	
-		ComputeLeftAndRightStates(E   , 2, i, E_slope,    QL, QR);	
+		compute_left_and_right_states(rho,  0, i, rho_slope,  QL, QR);	
+		compute_left_and_right_states(rhou, 1, i, rhou_slope, QL, QR);	
+		compute_left_and_right_states(E   , 2, i, E_slope,    QL, QR);	
 
 		std::array<double,3> flux = llf_flux(QL[0], QL[1], QL[2], QR[0], QR[1], QR[2]);
 
