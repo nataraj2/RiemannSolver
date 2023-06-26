@@ -20,7 +20,7 @@ int main(){
 	state_.dynamic.rho = rho;
 	state_.dynamic.rhou = rhou;
 	state_.dynamic.E = E;
-	state_.WriteSolution(0);
+	state_.write_solution(0);
 	
 	double time = 0.0;
 	int niter = t_end/dt;
@@ -31,7 +31,7 @@ int main(){
 		state_.build_u_next(state_.dynamic);
 
 		if(iter%freq==0){
-			state_.WriteSolution(iter/freq);
+			state_.write_solution(iter/freq);
 		}
 		time = time + dt;
 		std::cout << "Iteration is " << iter << " dt = " << dt << " " << "time = " << time << "\n";

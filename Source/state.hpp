@@ -16,21 +16,22 @@ struct dynamic_state {
 class state{
     public:
         dynamic_state dynamic;
-        void WriteSolution(const int iter);
+        void write_solution(const int iter);
         std::vector<double> rho_slope, rhou_slope, E_slope;
         std::vector<double> flux_rho, flux_rhou, flux_E;
         void build_u_next(dynamic_state& u_next);
         void compute_flux();
-        void ComputeLimitedSlopes_ConsVar();
+        void compute_limited_slopes_consvar();
 };
 
-void BoundaryConditions(dynamic_state& a_dyn_state);
-void ApplyBC(std::vector<double>& a_var);
+void compute_slopes(const std::vector<double> &var, std::vector<double> &slope);
+void boundary_conditions(dynamic_state& a_dyn_state);
+void apply_bc(std::vector<double>& a_var);
 
 void state::build_u_next(dynamic_state& u_next)
 {
 
-	ComputeLimitedSlopes_ConsVar();
+	compute_limited_slopes_consvar();
     compute_flux();
 
 	for(int i=2; i<=nx-1; i++){
@@ -39,11 +40,11 @@ void state::build_u_next(dynamic_state& u_next)
         u_next.E[i]    = u_next.E[i]    - dt*(flux_E[i+1]-flux_E[i])/dx;
      }
 
-	BoundaryConditions(u_next);
+	boundary_conditions(u_next);
 }
 
 
-void ComputeSlopes(const std::vector<double> &var, std::vector<double> &slope)
+void compute_slopes(const std::vector<double> &var, std::vector<double> &slope)
 {
 	double deltaU_left, deltaU_right, slope1;
 
@@ -57,7 +58,7 @@ void ComputeSlopes(const std::vector<double> &var, std::vector<double> &slope)
 	}	
 }
 
-void state::ComputeLimitedSlopes_ConsVar()
+void state::compute_limited_slopes_consvar()
 {
 	const auto &rho = dynamic.rho;
 	const auto &rhou = dynamic.rhou;
@@ -68,9 +69,9 @@ void state::ComputeLimitedSlopes_ConsVar()
 	E_slope.resize(nx+2);
 	
 	// Compute slopes and store them 
-	ComputeSlopes(rho , rho_slope);
-	ComputeSlopes(rhou, rhou_slope);
-	ComputeSlopes(E   , E_slope);	
+	compute_slopes(rho , rho_slope);
+	compute_slopes(rhou, rhou_slope);
+	compute_slopes(E   , E_slope);	
 }
 
 
@@ -110,7 +111,7 @@ void state::compute_flux()
 	}
 }
 
-void state::WriteSolution(const int iter)
+void state::write_solution(const int iter)
 {
 	std::string filename;
 	FILE* output_file;
@@ -137,7 +138,7 @@ void state::WriteSolution(const int iter)
     fclose(output_file);
 }
 
-void ApplyBC(std::vector<double>& a_var)
+void apply_bc(std::vector<double>& a_var)
 {
 	a_var[0]    = a_var[2];
 	a_var[1]    = a_var[2];
@@ -145,10 +146,10 @@ void ApplyBC(std::vector<double>& a_var)
 	a_var[nx+1] = a_var[nx-1];
 }
 
-void BoundaryConditions(dynamic_state& a_dyn_state)
+void boundary_conditions(dynamic_state& a_dyn_state)
 {
-	ApplyBC(a_dyn_state.rho);
-	ApplyBC(a_dyn_state.rhou);
-	ApplyBC(a_dyn_state.E);
+	apply_bc(a_dyn_state.rho);
+	apply_bc(a_dyn_state.rhou);
+	apply_bc(a_dyn_state.E);
 }
 }
