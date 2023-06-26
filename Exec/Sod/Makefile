@@ -2,7 +2,8 @@
 DIR1 :=.
 DIR2 :=../../Source
 
-INCLUDE_DIR :=../../Source
+INCLUDE_DIR := -I../../Source 
+INCLUDE_DIR += -I./
 
 
 # Define the source files
@@ -19,7 +20,7 @@ HEADER2 := $(wildcard $(DIR2)/*.H)
 
 # Define the compiler and flags
 CC := g++
-CFLAGS := -Wall -Wextra -std=c++14 -I$(INCLUDE_DIR)
+CFLAGS := -Wall -Wextra -std=c++14 $(INCLUDE_DIR) 
 
 # Define the target executable
 TARGET := riemann1d.ex
@@ -36,4 +37,7 @@ $(DIR2)/%.o: $(DIR2)/%.cpp $(HEADER2)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
-	rm -f $(TARGET) $(OBJ1) $(OBJ2)
+	rm -f $(DIR1)/*.o
+	rm -f $(DIR2)/*.o
+	rm -f $(TARGET)
+	
