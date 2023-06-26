@@ -57,8 +57,6 @@ void ComputeSlopes(const std::vector<double> &var, std::vector<double> &slope)
 
 void state::ComputeLimitedSlopes_ConsVar()
 {
-	double deltaU_left, deltaU_right, deltaU_central, slope1, slope2;
-
 	const auto &rho = dynamic.rho;
 	const auto &rhou = dynamic.rhou;
 	const auto &E = dynamic.E;
