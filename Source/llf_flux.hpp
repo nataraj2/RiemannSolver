@@ -113,7 +113,7 @@ std::array<double,3> ComputeHLLCFlux(const double SL, const double SR,
 }
 
 std::array<double,3> llf_flux(const double rho_l, const double rhou_l, const double E_l,
-    									  const double rho_r, const double rhou_r, const double E_r)
+    						  const double rho_r, const double rhou_r, const double E_r)
 {
 
 	double rhoL, uL, pL, cL, rhoR, uR, pR, cR, c_hat, u_hat;
