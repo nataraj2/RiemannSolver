@@ -4,7 +4,7 @@
 #include <cmath>
 #include <algorithm>
 
-#include "llf_flux.hpp"
+#include "llf_flux_HLLC.hpp"
 
 namespace Euler{
 
