@@ -1,9 +1,6 @@
 name: Riemann solver build and test
 
-on:
-  push:
-    branches:
-      - main  # Replace with your desired branch name
+on: [push, pull_request]
 
 jobs:
   mpi_parallel_job:
