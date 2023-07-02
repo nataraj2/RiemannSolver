@@ -19,7 +19,7 @@ HEADER1 := $(wildcard $(DIR1)/*.H)
 HEADER2 := $(wildcard $(DIR2)/*.H)
 
 # Define the compiler and flags
-CC := g++
+CC := mpicxx
 CFLAGS := -Wall -Wextra -std=c++14 $(INCLUDE_DIR) 
 
 # Define the target executable
