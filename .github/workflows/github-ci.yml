@@ -9,6 +9,8 @@ jobs:
     strategy:
       matrix:
         compiler: [serial]
+          mpi_version: [openmpi, mpich]  # Add other MPI implementations if needed
+          parallelism: [1, 1]  # Set the number of parallel processes you want to use
 
     steps:
     - name: Checkout code
@@ -19,13 +21,18 @@ jobs:
       with:
         node-version: '16.x'
 
-    - name: Install serial/parallel compiler
-      run: |
-        if [ "${{ matrix.compiler }}" = "serial" ]; then
-          sudo apt-get install mpicxx
-        else
-          sudo apt-get install mpicxx
-        fi
+    - name: Set up MPI
+        uses: mpioperator/mpi-operator@v1
+        with:
+          mpi-install: ${{ matrix.mpi_version }}
+
+    #- name: Install serial/parallel compiler
+    #  run: |
+    #    if [ "${{ matrix.compiler }}" = "serial" ]; then
+    #      sudo apt-get install mpicxx
+    #    else
+    #      sudo apt-get install mpicxx
+    #    fi
     - name: Run Sod test case
       run: |
        cd Exec/Sod
@@ -35,4 +42,4 @@ jobs:
       run: |
         cd Exec/Sod
         pwd
-        ./riemann1d.ex
+        mpirun -np 1 ./riemann1d.ex
