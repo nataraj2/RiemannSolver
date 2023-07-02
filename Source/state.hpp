@@ -6,12 +6,30 @@
 
 #include "llf_flux_HLLC.hpp"
 
+#include "mpi.h"
+
 namespace Euler{
+
+/*struct msg_t {
+    msg_t()=default;
+    msg_t(double rho_, double rhou_, double E_) : rho(rho_), rhou(rhou_), E(E_) {}
+    msg_t(const std::array<double,3>& arr) : rho(arr[0]), rhou(arr[1]), E(arr[2]) {}
+
+    void write_to_array(std::array<std::array<double,3>,ng>& arr) {
+		for (int i = 0; i < ng; ++i){
+        	arr[i][0] = rho[i];
+        	arr[i][1] = rhou;
+        	arr[i][2] = E;
+    	}
+	}
+
+	std::array<double, n_fields> send_buffer, receive_buffer;
+}*/
+
 
 struct dynamic_state {
     std::vector<double> rho,  rhou, E;
 };
-
 
 class state{
     public:
@@ -20,6 +38,7 @@ class state{
         std::vector<double> rho_slope, rhou_slope, E_slope;
         std::vector<double> flux_rho, flux_rhou, flux_E;
         void build_u_next(dynamic_state& u_next);
+        void lift_bdry(dynamic_state& u_next);
         void compute_flux();
         void compute_limited_slopes_consvar();
 };
@@ -28,13 +47,20 @@ void compute_slopes(const std::vector<double> &var, std::vector<double> &slope);
 void boundary_conditions(dynamic_state& a_dyn_state);
 void apply_bc(std::vector<double>& a_var);
 
+/*inline state::msg_t state::make_message(uint id_me, uint id_to) {
+
+    return id_me > id_to ?
+        msg_t(dynamic.rho[0], dynamic.rhou[0], dynamic.E[0]) :
+        msg_t(dynamic.rho[sz-1], dynamic.rhou[sz-1], dynamic.E[sz-1]);
+}*/
+
 void state::build_u_next(dynamic_state& u_next)
 {
 
 	compute_limited_slopes_consvar();
     compute_flux();
 
-	for(int i=2; i<=nx-1; i++){
+	for(int i=2*ng; i<=sz-1; i++){
         u_next.rho[i]  = u_next.rho[i]  - dt*(flux_rho[i+1]-flux_rho[i])/dx;
         u_next.rhou[i] = u_next.rhou[i] - dt*(flux_rhou[i+1]-flux_rhou[i])/dx;
         u_next.E[i]    = u_next.E[i]    - dt*(flux_E[i+1]-flux_E[i])/dx;
@@ -43,19 +69,32 @@ void state::build_u_next(dynamic_state& u_next)
 	boundary_conditions(u_next);
 }
 
+void state::lift_bdry(dynamic_state& u_next)
+{
 
-void compute_slopes(const std::vector<double> &var, std::vector<double> &slope)
+	for(int i=ng; i<=2*ng-1; i++){
+        u_next.rho[i]  = u_next.rho[i]  - dt*(flux_rho[i+1]-flux_rho[i])/dx;
+        u_next.rhou[i] = u_next.rhou[i] - dt*(flux_rhou[i+1]-flux_rhou[i])/dx;
+        u_next.E[i]    = u_next.E[i]    - dt*(flux_E[i+1]-flux_E[i])/dx;
+     }
+
+	for(int i=sz; i<=sz+ng-1; i++){
+        u_next.rho[i]  = u_next.rho[i]  - dt*(flux_rho[i+1]-flux_rho[i])/dx;
+        u_next.rhou[i] = u_next.rhou[i] - dt*(flux_rhou[i+1]-flux_rhou[i])/dx;
+        u_next.E[i]    = u_next.E[i]    - dt*(flux_E[i+1]-flux_E[i])/dx;
+     }
+}
+
+void compute_slopes(const std::vector<double> &var, std::vector<double> &slope, const int i)
 {
 	double deltaU_left, deltaU_right, slope1;
 
-	for(int i=1; i<=nx; i++){
-		deltaU_left =  var[i] - var[i-1];
-		deltaU_right = var[i+1] - var[i];
+	deltaU_left =  var[i] - var[i-1];
+	deltaU_right = var[i+1] - var[i];
 		
-		// Minmod limiter	
-		slope1 = minmod(deltaU_left    , deltaU_right);
-		slope[i] = slope1;	
-	}	
+	// Minmod limiter	
+	slope1 = minmod(deltaU_left    , deltaU_right);
+	slope[i] = slope1;	
 }
 
 void state::compute_limited_slopes_consvar()
@@ -64,14 +103,16 @@ void state::compute_limited_slopes_consvar()
 	const auto &rhou = dynamic.rhou;
 	const auto &E = dynamic.E;
 
-	rho_slope.resize(nx+2);
-	rhou_slope.resize(nx+2);
-	E_slope.resize(nx+2);
+	rho_slope.resize(sz+2*ng);
+	rhou_slope.resize(sz+2*ng);
+	E_slope.resize(sz+2*ng);
 	
 	// Compute slopes and store them 
-	compute_slopes(rho , rho_slope);
-	compute_slopes(rhou, rhou_slope);
-	compute_slopes(E   , E_slope);	
+	for(int i=ng-1; i<=sz+ng; i++){
+		compute_slopes(rho , rho_slope, i);
+		compute_slopes(rhou, rhou_slope, i);
+		compute_slopes(E   , E_slope, i);	
+	}	
 }
 
 
@@ -91,12 +132,12 @@ void state::compute_flux()
 	const auto &rhou = dynamic.rhou;
 	const auto &E = dynamic.E;
 
-	flux_rho.resize(nx+1,0.0);
-	flux_rhou.resize(nx+1,0.0);
-	flux_E.resize(nx+1,0.0);
+	flux_rho.resize(sz+2*ng+1,0.0);
+	flux_rhou.resize(sz+2*ng+1,0.0);
+	flux_E.resize(sz+2*ng+1,0.0);
 
 	// Face loop over all faces
-	for(int i=2;i<=nx; i++){
+	for(int i=ng;i<=sz+ng; i++){
 
 		// Compute left and right states. ie. for all the conservative variables
 		compute_left_and_right_states(rho,  0, i, rho_slope,  QL, QR);	
@@ -129,21 +170,30 @@ void state::write_solution(const int iter)
         filename = "Solution_" + std::to_string(iter) + ".txt";
 	}
 
-    output_file = fopen(filename.c_str(), "w");
+    output_file = fopen(filename.c_str(), "a");
 
-    for(int i=0;i<=nx+1; i++){
-        fprintf(output_file, "%g %g %g %g\n",x[i], dynamic.rho[i], dynamic.rhou[i], dynamic.E[i]);
-    }
+	for(int i = 0; i<rank_n; i++){
+		if(rank_me == i){	
+    		for(int i=ng;i<=sz+ng-1; i++){
+        		fprintf(output_file, "%g %g %g %g\n",x[i], dynamic.rho[i], dynamic.rhou[i], dynamic.E[i]);
+    		}
+			fflush(output_file);
+		}	
+		MPI_Barrier(MPI_COMM_WORLD);
+	}
+	MPI_Barrier(MPI_COMM_WORLD);
 
     fclose(output_file);
 }
 
 void apply_bc(std::vector<double>& a_var)
 {
-	a_var[0]    = a_var[2];
-	a_var[1]    = a_var[2];
-	a_var[nx]   = a_var[nx-1];
-	a_var[nx+1] = a_var[nx-1];
+	for(int i=0;i<=ng-1;i++){
+		a_var[i]    = a_var[ng];
+	}	
+	for(int i=sz+ng;i<=sz+2*ng-1;i++){
+		a_var[i]   = a_var[sz+ng-1];
+	}
 }
 
 void boundary_conditions(dynamic_state& a_dyn_state)

@@ -3,31 +3,40 @@
 #include <cassert>
 #include <cmath>
 
+#include "globals.hpp"
+
 namespace Euler{
 
     int ND = 1;
-    int nx = 401;
-    double xmin = -1.0, xmax = 1.0;
+	const int ng = 2;
+    int nx = 400;
+	int sz;
+    double xmin = -10.0, xmax = 10.0;
     double gamma_air = 1.4;
-	double dx, dt = 0.001, t_end = 0.3;
+	double dx, dt = 1.25e-5, t_end = 0.01;
 
 	std::vector<double> x;
 
 void initialize(std::vector<double> &rho, std::vector<double> &rhou, std::vector<double> &E)
 {
-    double rhoL = 1.0, pL = 1.0, uL = 0.0;
-    double rhoR = 0.125, pR = 0.1, uR = 0.0;
+    double rhoL = 1.0, pL = 100000.0, uL = 0.0;
+    double rhoR = 0.125, pR = 10000.0, uR = 0.0;
+
+	// Number of cells in each rank;
+	sz = nx/rank_n;
 	
-    x.resize(nx+2);
+    x.resize(sz+2*ng);
 
-    dx = (xmax-xmin)/(nx-1);
+    dx = (xmax-xmin)/nx;
 
-	rho.resize(nx+2);
-	rhou.resize(nx+2);
-	E.resize(nx+2);
-
-    for(int i=0;i<=nx+1;i++){
-        x[i] = xmin -2.0*dx + i*dx;
+	// Allocate variables with grown ghost cells
+	rho.resize(sz+2*ng);
+	rhou.resize(sz+2*ng);
+	E.resize(sz+2*ng);
+	
+	// Fill the internal region of the proc
+    for(int i=0;i<=sz+2*ng-1;i++){
+        x[i] = xmin - ng*dx + (i+sz*rank_me+0.5)*dx;
         if(x[i] <= 0.0){
             rho[i] = rhoL;
             rhou[i] = rhoL*uL;
