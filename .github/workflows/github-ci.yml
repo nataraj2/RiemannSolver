@@ -14,10 +14,8 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
 
-      - name: Set up MPI
-        uses: mpioperator/mpi-operator@v1
-        with:
-          mpi-install: ${{ matrix.mpi_version }}
+      - name: Install OpenMPI
+        run: sudo apt-get update && sudo apt-get install -y openmpi-bin
 
       - name: Build code
         run: |
