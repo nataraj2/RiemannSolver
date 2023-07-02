@@ -1,45 +1,36 @@
 name: Riemann solver build and test
 
-on: [push, pull_request]
+on:
+  push:
+    branches:
+      - main  # Replace with your desired branch name
 
 jobs:
-  build:
+  mpi_parallel_job:
     runs-on: ubuntu-latest
-
     strategy:
       matrix:
-        compiler: [serial]
-          mpi_version: [openmpi, mpich]  # Add other MPI implementations if needed
-          parallelism: [1, 1]  # Set the number of parallel processes you want to use
+        mpi_version: [openmpi, mpich]  # Add other MPI implementations if needed
+        parallelism: [1, 1]  # Set the number of parallel processes you want to use
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v2
+      - name: Checkout code
+        uses: actions/checkout@v2
 
-    - name: Set up build environment
-      uses: actions/setup-node@v2
-      with:
-        node-version: '16.x'
-
-    - name: Set up MPI
+      - name: Set up MPI
         uses: mpioperator/mpi-operator@v1
         with:
           mpi-install: ${{ matrix.mpi_version }}
 
-    #- name: Install serial/parallel compiler
-    #  run: |
-    #    if [ "${{ matrix.compiler }}" = "serial" ]; then
-    #      sudo apt-get install mpicxx
-    #    else
-    #      sudo apt-get install mpicxx
-    #    fi
-    - name: Run Sod test case
-      run: |
-       cd Exec/Sod
-       make
-       ls
-    - name: Run Riemann Solver with serial executable
-      run: |
-        cd Exec/Sod
-        pwd
-        mpirun -np 1 ./riemann1d.ex
+      - name: Build code
+        run: |
+          # Replace these commands with the ones needed to build your MPI code
+          # For example, if using CMake:
+          cd Exec/Sod
+          make
+
+      - name: Run MPI code
+        run: |
+          # Replace 'mpi_executable' with the actual name of your MPI executable
+          # Adjust the '-np' flag to the desired number of parallel processes (e.g., '-np 4')
+          mpirun -np ${{ matrix.parallelism }} ./riemann_1d.ex
