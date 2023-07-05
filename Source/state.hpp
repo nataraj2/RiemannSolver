@@ -10,21 +10,32 @@
 
 namespace Euler{
 
-/*struct msg_t {
+struct msg_t {
     msg_t()=default;
-    msg_t(double rho_, double rhou_, double E_) : rho(rho_), rhou(rhou_), E(E_) {}
-    msg_t(const std::array<double,3>& arr) : rho(arr[0]), rhou(arr[1]), E(arr[2]) {}
+    msg_t(const std::array<std::array<double,3>,ng>& arr)
+	{
+		rho_msg.resize(ng,0.0);
+		rhou_msg.resize(ng,0.0);
+		E_msg.resize(ng,0.0);
+
+		for(int i=0; i<ng; i++){
+			rho_msg[i]  = arr[i][0];
+			rhou_msg[i] = arr[i][1];
+			E_msg[i]    = arr[i][2];
+		}	   
+	}
 
     void write_to_array(std::array<std::array<double,3>,ng>& arr) {
 		for (int i = 0; i < ng; ++i){
-        	arr[i][0] = rho[i];
-        	arr[i][1] = rhou;
-        	arr[i][2] = E;
+        	arr[i][0] = rho_msg[i];
+        	arr[i][1] = rhou_msg[i];
+        	arr[i][2] = E_msg[i];
     	}
 	}
 
-	std::array<double, n_fields> send_buffer, receive_buffer;
-}*/
+	std::vector<double> rho_msg, rhou_msg, E_msg;
+	std::array<std::array<double, 3>,ng> send_buffer, receive_buffer;
+};
 
 
 struct dynamic_state {
