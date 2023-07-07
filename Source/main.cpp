@@ -88,9 +88,6 @@ int main(int argc, char* argv[]){
 
 
 	size_t n_bdries = (bool)has_left_bdry + (bool)has_right_bdry;
-	/*std::cout << "Rank " << rank_me <<  " has " << n_bdries << " boundaries" << "\n";
-	MPI_Barrier(MPI_COMM_WORLD);
-	exit(0);*/
     send_request.resize(n_bdries);
     receive_request.resize(n_bdries);
     distributed_boundaries.resize(n_bdries);
@@ -127,8 +124,8 @@ int main(int argc, char* argv[]){
     	MPI_Waitall(receive_request.size(), receive_request.data(), MPI_STATUSES_IGNORE);
 
 		for ( auto& dist_bdry : distributed_boundaries ) {
-			state_.process_message(id, dist_bdry.id, msg_t(dist_bdry.receive_buffer));
-			state_.lift_bdry(id, dist_bdry.id, state_.dynamic);
+			state_.lift_bdry(id, dist_bdry.id, state_.dynamic, dt*state_.process_message(id, dist_bdry.id,
+                                                msg_t(dist_bdry.receive_buffer)));
 		}
 
 		if(iter%freq==0){

@@ -14,43 +14,54 @@ struct msg_t {
     msg_t()=default;
     msg_t(const std::array<std::array<double,3>,ng>& arr)
 	{
-		rho_msg.resize(ng,0.0);
-		rhou_msg.resize(ng,0.0);
-		E_msg.resize(ng,0.0);
+		rho.resize(ng,0.0);
+		rhou.resize(ng,0.0);
+		E.resize(ng,0.0);
 
 		for(int i=0; i<=ng-1; i++){
-			rho_msg[i]  = arr[i][0];
-			rhou_msg[i] = arr[i][1];
-			E_msg[i]    = arr[i][2];
+			rho[i]  = arr[i][0];
+			rhou[i] = arr[i][1];
+			E[i]    = arr[i][2];
 		}	   
 	}
 
     inline void write_to_array(std::array<std::array<double,3>,ng>& arr) {
 		for (int i = 0; i<=ng-1; ++i){
-        	arr[i][0] = rho_msg[i];
-        	arr[i][1] = rhou_msg[i];
-        	arr[i][2] = E_msg[i];
+        	arr[i][0] = rho[i];
+        	arr[i][1] = rhou[i];
+        	arr[i][2] = E[i];
     	}
 	}
 
-	std::vector<double> rho_msg, rhou_msg, E_msg;
+	std::vector<double> rho, rhou, E;
 	std::array<std::array<double, 3>,ng> send_buffer, receive_buffer;
 };
 
 struct bdry_t {
 	bdry_t(std::array<std::array<double,3>,ng>& arr){	
-		flux_rho.resize(ng,0.0);	
-		flux_rhou.resize(ng,0.0);	
-		flux_E.resize(ng,0.0);
+		flux_diff_rho.resize(ng,0.0);	
+		flux_diff_rhou.resize(ng,0.0);	
+		flux_diff_E.resize(ng,0.0);
 
 		for(int i=0; i<=ng-1; i++){
-			flux_rho[i]  = arr[i][0];
-			flux_rhou[i] = arr[i][1];
-			flux_E[i]    = arr[i][2];
+			flux_diff_rho[i]  = arr[i][0];
+			flux_diff_rhou[i] = arr[i][1];
+			flux_diff_E[i]    = arr[i][2];
 		}
 	}		
-	std::vector<double> flux_rho, flux_rhou, flux_E;		
+	std::vector<double> flux_diff_rho, flux_diff_rhou, flux_diff_E;		
 };
+
+inline bdry_t operator * (double a, const bdry_t& bdry) {
+
+	std::array<std::array<double,3>,ng> arr;
+	for(int i=0; i<=ng-1; i++){
+		arr[i][0] = a*bdry.flux_diff_rho[i];	
+		arr[i][1] = a*bdry.flux_diff_rhou[i];	
+		arr[i][2] = a*bdry.flux_diff_E[i];	
+	}		
+    return bdry_t(arr);
+}
 
 struct dynamic_state {
     std::vector<double> rho,  rhou, E;
@@ -58,6 +69,7 @@ struct dynamic_state {
 
 class state{
 	using msg_t = Euler::msg_t;
+	using bdry_t = Euler::bdry_t;
     public:
         dynamic_state dynamic;
         std::vector<double> rho_slope, rhou_slope, E_slope;
@@ -65,8 +77,8 @@ class state{
 		void allocate_arrays();
 		msg_t make_message(uint id_from , uint id_to);
         void build_u_next(dynamic_state& u_next, int rank_me, int rank_n);
-		void process_message(uint id_me, uint id_from, const msg_t& msg );
-        void lift_bdry(uint id_me, uint id_from, dynamic_state& u_next);
+		state::bdry_t process_message(uint id_me, uint id_from, const msg_t& msg );
+        void lift_bdry(uint id_me, uint id_from, dynamic_state& u_next, const bdry_t& bdry);
         void compute_flux(int i);
         void compute_limited_slopes_consvar(int i);
 		void boundary_conditions(dynamic_state& a_dyn_state, int rank_me, int rank_n);
@@ -102,9 +114,9 @@ inline state::msg_t state::make_message(uint id_me, uint id_to) {
 	return msg_t(arr);
 }
 
-inline void state::process_message(uint id_me, uint id_from, const msg_t& msg )
+inline state::bdry_t state::process_message(uint id_me, uint id_from, const msg_t& msg )
 {	
-	//std::array<std::array<double,3>,ng>& arr;
+	std::array<std::array<double,3>,ng> arr;
 
 	auto &rho = dynamic.rho;
 	auto &rhou = dynamic.rhou;
@@ -112,9 +124,9 @@ inline void state::process_message(uint id_me, uint id_from, const msg_t& msg )
 	
 	if(id_me > id_from){		
 		for(int i=0; i<=ng-1; i++){
-			rho[i] = msg.rho_msg[i];
-			rhou[i] = msg.rhou_msg[i];
-			E[i] = msg.E_msg[i];
+			rho[i] = msg.rho[i];
+			rhou[i] = msg.rhou[i];
+			E[i] = msg.E[i];
 		}
 		for(int i=ng-1; i<=2*ng-2; i++){
 	    	compute_limited_slopes_consvar(i);
@@ -123,14 +135,17 @@ inline void state::process_message(uint id_me, uint id_from, const msg_t& msg )
 		for(int i=ng; i<=2*ng-1; i++){
     		compute_flux(i);
 		}
-
-
+		for(int i=0;i<=ng-1;i++){
+			arr[i][0] = (flux_rho[ng+1+i]-flux_rho[ng+i]);
+			arr[i][1] = (flux_rhou[ng+1+i]-flux_rhou[ng+i]);
+			arr[i][2] = (flux_E[ng+1+i]-flux_E[ng+i]);
+		}
 	}
 	else if(id_me < id_from){
 		for(int i=0; i<=ng-1; i++){
-            rho[sz+ng+i] = msg.rho_msg[i];
-            rhou[sz+ng+i] = msg.rhou_msg[i];
-            E[sz+ng+i] = msg.E_msg[i];
+            rho[sz+ng+i] = msg.rho[i];
+            rhou[sz+ng+i] = msg.rhou[i];
+            E[sz+ng+i] = msg.E[i];
         }
 
 		for(int i=sz+1; i<=sz+ng; i++){
@@ -141,20 +156,18 @@ inline void state::process_message(uint id_me, uint id_from, const msg_t& msg )
     		compute_flux(i);
 		}
 
-		/*for(int i=0;i<=ng-1;i++){
+		for(int i=0;i<=ng-1;i++){
 			arr[i][0] = (flux_rho[sz+1+i]-flux_rho[sz+i]);
-			arr[i][1] = (flux_rhou[sz+1+i]-flux_rhou[sz+1+i];
-			arr[i][2] = flux_E[sz+1+i];
-		}*/
+			arr[i][1] = (flux_rhou[sz+1+i]-flux_rhou[sz+i]);
+			arr[i][2] = (flux_E[sz+1+i]-flux_E[sz+i]);
+		}
 	}
 	else{
 		std::cout << "Should not reach here in process message. Exiting...." << "\n";
 		exit(1);
 	}
 
-		
-		
-	
+	return bdry_t(arr);
 }
 
 inline void state::allocate_arrays()
@@ -209,22 +222,22 @@ inline void state::build_u_next(dynamic_state& u_next, int rank_me, int rank_n)
      }
 }
 
-inline void state::lift_bdry(uint id_me, uint id_from, dynamic_state& u_next)
+inline void state::lift_bdry(uint id_me, uint id_from, dynamic_state& u_next, const bdry_t& bdry)
 {
 
 	// Do all processor boundary cells - i.e. ng cells will be updated on each side
 	if(id_me > id_from){
 		for(int i=ng; i<=2*ng-1; i++){
-        	u_next.rho[i]  = u_next.rho[i]  - dt*(flux_rho[i+1]-flux_rho[i])/dx;
-        	u_next.rhou[i] = u_next.rhou[i] - dt*(flux_rhou[i+1]-flux_rhou[i])/dx;
-        	u_next.E[i]    = u_next.E[i]    - dt*(flux_E[i+1]-flux_E[i])/dx;
+        	u_next.rho[i]  = u_next.rho[i]  - bdry.flux_diff_rho[i-ng]/dx;
+        	u_next.rhou[i] = u_next.rhou[i] - bdry.flux_diff_rhou[i-ng]/dx;
+        	u_next.E[i]    = u_next.E[i]    - bdry.flux_diff_E[i-ng]/dx;
      	}
 	}
 	else if(id_me < id_from){
 		for(int i=sz; i<=sz+ng-1; i++){
-        	u_next.rho[i]  = u_next.rho[i]  - dt*(flux_rho[i+1]-flux_rho[i])/dx;
-        	u_next.rhou[i] = u_next.rhou[i] - dt*(flux_rhou[i+1]-flux_rhou[i])/dx;
-        	u_next.E[i]    = u_next.E[i]    - dt*(flux_E[i+1]-flux_E[i])/dx;
+        	u_next.rho[i]  = u_next.rho[i]  - bdry.flux_diff_rho[i-sz]/dx;
+        	u_next.rhou[i] = u_next.rhou[i] - bdry.flux_diff_rhou[i-sz]/dx;
+        	u_next.E[i]    = u_next.E[i]    - bdry.flux_diff_E[i-sz]/dx;
      	}
 	}
 	else{
