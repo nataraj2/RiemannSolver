@@ -18,15 +18,15 @@ struct msg_t {
 		rhou_msg.resize(ng,0.0);
 		E_msg.resize(ng,0.0);
 
-		for(int i=0; i<ng; i++){
+		for(int i=0; i<=ng-1; i++){
 			rho_msg[i]  = arr[i][0];
 			rhou_msg[i] = arr[i][1];
 			E_msg[i]    = arr[i][2];
 		}	   
 	}
 
-    void write_to_array(std::array<std::array<double,3>,ng>& arr) {
-		for (int i = 0; i < ng; ++i){
+    inline void write_to_array(std::array<std::array<double,3>,ng>& arr) {
+		for (int i = 0; i<=ng-1; ++i){
         	arr[i][0] = rho_msg[i];
         	arr[i][1] = rhou_msg[i];
         	arr[i][2] = E_msg[i];
@@ -37,66 +37,203 @@ struct msg_t {
 	std::array<std::array<double, 3>,ng> send_buffer, receive_buffer;
 };
 
+struct bdry_t {
+	bdry_t(std::array<std::array<double,3>,ng>& arr){	
+		flux_rho.resize(ng,0.0);	
+		flux_rhou.resize(ng,0.0);	
+		flux_E.resize(ng,0.0);
+
+		for(int i=0; i<=ng-1; i++){
+			flux_rho[i]  = arr[i][0];
+			flux_rhou[i] = arr[i][1];
+			flux_E[i]    = arr[i][2];
+		}
+	}		
+	std::vector<double> flux_rho, flux_rhou, flux_E;		
+};
 
 struct dynamic_state {
     std::vector<double> rho,  rhou, E;
 };
 
 class state{
+	using msg_t = Euler::msg_t;
     public:
         dynamic_state dynamic;
-        void write_solution(const int iter);
         std::vector<double> rho_slope, rhou_slope, E_slope;
         std::vector<double> flux_rho, flux_rhou, flux_E;
-        void build_u_next(dynamic_state& u_next);
-        void lift_bdry(dynamic_state& u_next);
-        void compute_flux();
-        void compute_limited_slopes_consvar();
+		void allocate_arrays();
+		msg_t make_message(uint id_from , uint id_to);
+        void build_u_next(dynamic_state& u_next, int rank_me, int rank_n);
+		void process_message(uint id_me, uint id_from, const msg_t& msg );
+        void lift_bdry(uint id_me, uint id_from, dynamic_state& u_next);
+        void compute_flux(int i);
+        void compute_limited_slopes_consvar(int i);
+		void boundary_conditions(dynamic_state& a_dyn_state, int rank_me, int rank_n);
+        void write_solution(const int iter);
 };
 
 void compute_slopes(const std::vector<double> &var, std::vector<double> &slope);
 void boundary_conditions(dynamic_state& a_dyn_state);
 void apply_bc(std::vector<double>& a_var);
 
-/*inline state::msg_t state::make_message(uint id_me, uint id_to) {
+inline state::msg_t state::make_message(uint id_me, uint id_to) {
 
-    return id_me > id_to ?
-        msg_t(dynamic.rho[0], dynamic.rhou[0], dynamic.E[0]) :
-        msg_t(dynamic.rho[sz-1], dynamic.rhou[sz-1], dynamic.E[sz-1]);
-}*/
+	std::array<std::array<double,3>,ng> arr;
 
-void state::build_u_next(dynamic_state& u_next)
-{
-
-	compute_limited_slopes_consvar();
-    compute_flux();
-
-	for(int i=2*ng; i<=sz-1; i++){
-        u_next.rho[i]  = u_next.rho[i]  - dt*(flux_rho[i+1]-flux_rho[i])/dx;
-        u_next.rhou[i] = u_next.rhou[i] - dt*(flux_rhou[i+1]-flux_rhou[i])/dx;
-        u_next.E[i]    = u_next.E[i]    - dt*(flux_E[i+1]-flux_E[i])/dx;
-     }
-
-	boundary_conditions(u_next);
+    if(id_me > id_to){
+		for(int i=0; i<=ng-1; i++){
+			arr[i][0] = dynamic.rho[ng+i];				
+			arr[i][1] = dynamic.rhou[ng+i];				
+			arr[i][2] = dynamic.E[ng+i];
+		}
+	}
+	else if (id_me < id_to) {
+		for(int i=0; i<=ng-1; i++){
+			arr[i][0] = dynamic.rho[sz+i];				
+			arr[i][1] = dynamic.rhou[sz+i];				
+			arr[i][2] = dynamic.E[sz+i];
+		}
+	}
+	else{
+		std::cout << "Should not reach here inside make message. Exiting ... " << "\n";
+		exit(1);
+	}
+	return msg_t(arr);
 }
 
-void state::lift_bdry(dynamic_state& u_next)
+inline void state::process_message(uint id_me, uint id_from, const msg_t& msg )
+{	
+	//std::array<std::array<double,3>,ng>& arr;
+
+	auto &rho = dynamic.rho;
+	auto &rhou = dynamic.rhou;
+	auto &E = dynamic.E;
+	
+	if(id_me > id_from){		
+		for(int i=0; i<=ng-1; i++){
+			rho[i] = msg.rho_msg[i];
+			rhou[i] = msg.rhou_msg[i];
+			E[i] = msg.E_msg[i];
+		}
+		for(int i=ng-1; i<=2*ng-2; i++){
+	    	compute_limited_slopes_consvar(i);
+		}
+
+		for(int i=ng; i<=2*ng-1; i++){
+    		compute_flux(i);
+		}
+
+
+	}
+	else if(id_me < id_from){
+		for(int i=0; i<=ng-1; i++){
+            rho[sz+ng+i] = msg.rho_msg[i];
+            rhou[sz+ng+i] = msg.rhou_msg[i];
+            E[sz+ng+i] = msg.E_msg[i];
+        }
+
+		for(int i=sz+1; i<=sz+ng; i++){
+    		compute_limited_slopes_consvar(i);
+		}
+
+		for(int i=sz+1; i<=sz+ng; i++){
+    		compute_flux(i);
+		}
+
+		/*for(int i=0;i<=ng-1;i++){
+			arr[i][0] = (flux_rho[sz+1+i]-flux_rho[sz+i]);
+			arr[i][1] = (flux_rhou[sz+1+i]-flux_rhou[sz+1+i];
+			arr[i][2] = flux_E[sz+1+i];
+		}*/
+	}
+	else{
+		std::cout << "Should not reach here in process message. Exiting...." << "\n";
+		exit(1);
+	}
+
+		
+		
+	
+}
+
+inline void state::allocate_arrays()
 {
+	rho_slope.resize(sz+2*ng);
+	rhou_slope.resize(sz+2*ng);
+	E_slope.resize(sz+2*ng);
 
-	for(int i=ng; i<=2*ng-1; i++){
-        u_next.rho[i]  = u_next.rho[i]  - dt*(flux_rho[i+1]-flux_rho[i])/dx;
-        u_next.rhou[i] = u_next.rhou[i] - dt*(flux_rhou[i+1]-flux_rhou[i])/dx;
-        u_next.E[i]    = u_next.E[i]    - dt*(flux_E[i+1]-flux_E[i])/dx;
-     }
+	flux_rho.resize(sz+2*ng+1,0.0);
+	flux_rhou.resize(sz+2*ng+1,0.0);
+	flux_E.resize(sz+2*ng+1,0.0);
+}	
 
-	for(int i=sz; i<=sz+ng-1; i++){
+inline void state::build_u_next(dynamic_state& u_next, int rank_me, int rank_n)
+{
+	// Do all internal cells that do not require communicated data
+
+
+	// Do boundary conditions
+	boundary_conditions(u_next, rank_me, rank_n);
+	
+	// Rank 0 and n-1 can do extra cells during this stage
+	int istart, iend;
+	if(rank_me==0){
+		istart = 2;
+		iend = sz-1;
+	}
+	else if(rank_me==rank_n-1){
+		istart = 2*ng;
+		iend = sz+ng-1;
+	}
+	else{
+		istart = 2*ng;
+		iend = sz-1;
+	}
+
+	// Compute all internal slopes
+	for(int i=istart-1; i<=iend+1; i++){
+		compute_limited_slopes_consvar(i);
+	}
+
+	// Compute all internal fluxes
+	for(int i=istart;i<=iend+1; i++){
+    	compute_flux(i);
+	}
+
+	// Compute all internal updates
+	for(int i=istart; i<=iend; i++){
         u_next.rho[i]  = u_next.rho[i]  - dt*(flux_rho[i+1]-flux_rho[i])/dx;
         u_next.rhou[i] = u_next.rhou[i] - dt*(flux_rhou[i+1]-flux_rhou[i])/dx;
         u_next.E[i]    = u_next.E[i]    - dt*(flux_E[i+1]-flux_E[i])/dx;
      }
 }
 
-void compute_slopes(const std::vector<double> &var, std::vector<double> &slope, const int i)
+inline void state::lift_bdry(uint id_me, uint id_from, dynamic_state& u_next)
+{
+
+	// Do all processor boundary cells - i.e. ng cells will be updated on each side
+	if(id_me > id_from){
+		for(int i=ng; i<=2*ng-1; i++){
+        	u_next.rho[i]  = u_next.rho[i]  - dt*(flux_rho[i+1]-flux_rho[i])/dx;
+        	u_next.rhou[i] = u_next.rhou[i] - dt*(flux_rhou[i+1]-flux_rhou[i])/dx;
+        	u_next.E[i]    = u_next.E[i]    - dt*(flux_E[i+1]-flux_E[i])/dx;
+     	}
+	}
+	else if(id_me < id_from){
+		for(int i=sz; i<=sz+ng-1; i++){
+        	u_next.rho[i]  = u_next.rho[i]  - dt*(flux_rho[i+1]-flux_rho[i])/dx;
+        	u_next.rhou[i] = u_next.rhou[i] - dt*(flux_rhou[i+1]-flux_rhou[i])/dx;
+        	u_next.E[i]    = u_next.E[i]    - dt*(flux_E[i+1]-flux_E[i])/dx;
+     	}
+	}
+	else{
+		std::cout << "Should not reach here inside lift_bdry. Exiting....." << "\n";
+		exit(1);
+	}
+}
+
+inline void compute_slopes(const std::vector<double> &var, std::vector<double> &slope, const int i)
 {
 	double deltaU_left, deltaU_right, slope1;
 
@@ -104,37 +241,31 @@ void compute_slopes(const std::vector<double> &var, std::vector<double> &slope, 
 	deltaU_right = var[i+1] - var[i];
 		
 	// Minmod limiter	
-	slope1 = minmod(deltaU_left    , deltaU_right);
+	slope1 = minmod(deltaU_left, deltaU_right);
 	slope[i] = slope1;	
 }
 
-void state::compute_limited_slopes_consvar()
+inline void state::compute_limited_slopes_consvar(int i)
 {
 	const auto &rho = dynamic.rho;
 	const auto &rhou = dynamic.rhou;
 	const auto &E = dynamic.E;
-
-	rho_slope.resize(sz+2*ng);
-	rhou_slope.resize(sz+2*ng);
-	E_slope.resize(sz+2*ng);
 	
 	// Compute slopes and store them 
-	for(int i=ng-1; i<=sz+ng; i++){
-		compute_slopes(rho , rho_slope, i);
-		compute_slopes(rhou, rhou_slope, i);
-		compute_slopes(E   , E_slope, i);	
-	}	
+	compute_slopes(rho , rho_slope, i);
+	compute_slopes(rhou, rhou_slope, i);
+	compute_slopes(E   , E_slope, i);	
 }
 
 
-void compute_left_and_right_states(const std::vector<double>& a_var, const int a_n, const int a_i, const std::vector<double>& a_slope,
+inline void compute_left_and_right_states(const std::vector<double>& a_var, const int a_n, const int a_i, const std::vector<double>& a_slope,
                                       std::vector<double>& a_state_left, std::vector<double>& a_state_right)
 {
     a_state_left[a_n]  = a_var[a_i-1] + 0.5*a_slope[a_i-1];
     a_state_right[a_n] = a_var[a_i] - 0.5*a_slope[a_i];
 }
 
-void state::compute_flux()
+inline void state::compute_flux(int i)
 {
 
 	std::vector<double> QL(ND+2,0.0), QR(ND+2,0.0);
@@ -143,12 +274,6 @@ void state::compute_flux()
 	const auto &rhou = dynamic.rhou;
 	const auto &E = dynamic.E;
 
-	flux_rho.resize(sz+2*ng+1,0.0);
-	flux_rhou.resize(sz+2*ng+1,0.0);
-	flux_E.resize(sz+2*ng+1,0.0);
-
-	// Face loop over all faces
-	for(int i=ng;i<=sz+ng; i++){
 
 		// Compute left and right states. ie. for all the conservative variables
 		compute_left_and_right_states(rho,  0, i, rho_slope,  QL, QR);	
@@ -160,10 +285,9 @@ void state::compute_flux()
 		flux_rho[i] = flux[0]; 
 		flux_rhou[i] = flux[1]; 
 		flux_E[i] = flux[2]; 
-	}
 }
 
-void state::write_solution(const int iter)
+inline void state::write_solution(const int iter)
 {
 	std::string filename;
 	FILE* output_file;
@@ -197,20 +321,24 @@ void state::write_solution(const int iter)
     fclose(output_file);
 }
 
-void apply_bc(std::vector<double>& a_var)
+inline void apply_bc(std::vector<double>& a_var, int rank_me, int rank_n)
 {
-	for(int i=0;i<=ng-1;i++){
-		a_var[i]    = a_var[ng];
-	}	
-	for(int i=sz+ng;i<=sz+2*ng-1;i++){
-		a_var[i]   = a_var[sz+ng-1];
+	if(rank_me==0){
+		for(int i=0;i<=ng-1;i++){
+			a_var[i] = a_var[ng];
+		}
+	}
+	else if(rank_me == rank_n-1){	
+		for(int i=sz+ng;i<=sz+2*ng-1;i++){
+			a_var[i] = a_var[sz+ng-1];
+		}
 	}
 }
 
-void boundary_conditions(dynamic_state& a_dyn_state)
+inline void state::boundary_conditions(dynamic_state& a_dyn_state, int rank_me, int rank_n)
 {
-	apply_bc(a_dyn_state.rho);
-	apply_bc(a_dyn_state.rhou);
-	apply_bc(a_dyn_state.E);
+	apply_bc(a_dyn_state.rho, rank_me, rank_n);
+	apply_bc(a_dyn_state.rhou, rank_me, rank_n);
+	apply_bc(a_dyn_state.E, rank_me, rank_n);
 }
 }

@@ -23,11 +23,10 @@ void initialize(std::vector<double> &rho, std::vector<double> &rhou, std::vector
     double rhoR = 0.125, pR = 10000.0, uR = 0.0;
 
 	// Number of cells in each rank;
+    dx = (xmax-xmin)/nx;
 	sz = nx/rank_n;
 	
     x.resize(sz+2*ng);
-
-    dx = (xmax-xmin)/nx;
 
 	// Allocate variables with grown ghost cells
 	rho.resize(sz+2*ng);
@@ -35,7 +34,7 @@ void initialize(std::vector<double> &rho, std::vector<double> &rhou, std::vector
 	E.resize(sz+2*ng);
 	
 	// Fill the internal region of the proc
-    for(int i=0;i<=sz+2*ng-1;i++){
+    for(int i=ng;i<=sz+ng-1;i++){
         x[i] = xmin - ng*dx + (i+sz*rank_me+0.5)*dx;
         if(x[i] <= 0.0){
             rho[i] = rhoL;
