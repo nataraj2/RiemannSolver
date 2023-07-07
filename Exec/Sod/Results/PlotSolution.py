@@ -1,6 +1,16 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import glob
+import os
+
+def create_directory_if_not_exists(directory):
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+
+# Usage example
+directory_path = "Images"
+create_directory_if_not_exists(directory_path)
+
 
 fig, axs = plt.subplots(2, 2)
 plt.subplots_adjust(left=0.12, right=0.9, bottom=0.1, top=0.9, wspace=0.4, hspace=0.6)
@@ -27,6 +37,7 @@ for itern in np.arange(0,count,40):
 	elif(itern<=9999):
 		solution_file = "../Solution_" + str(itern) + ".txt";
 
+	print(solution_file)
 	solution = np.loadtxt(solution_file);
 	print(solution_file)
 	plt.figure(1)
