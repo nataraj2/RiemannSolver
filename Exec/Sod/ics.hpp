@@ -9,11 +9,11 @@ namespace Euler{
 
     int ND = 1;
 	const int ng = 2;
-    int nx = 400;
+    int nx = 800;
 	int sz;
     double xmin = -10.0, xmax = 10.0;
     double gamma_air = 1.4;
-	double dx, dt = 1.25e-5, t_end = 0.01;
+	double dx, dt = 1.25e-5/2.0, t_end = 0.01+1e-10;
 
 	std::vector<double> x;
 
