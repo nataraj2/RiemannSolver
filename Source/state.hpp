@@ -185,7 +185,6 @@ inline void state::build_u_next(dynamic_state& u_next, int rank_me, int rank_n)
 {
 	// Do all internal cells that do not require communicated data
 
-
 	// Do boundary conditions
 	boundary_conditions(u_next, rank_me, rank_n);
 	
@@ -288,16 +287,16 @@ inline void state::compute_flux(int i)
 	const auto &E = dynamic.E;
 
 
-		// Compute left and right states. ie. for all the conservative variables
-		compute_left_and_right_states(rho,  0, i, rho_slope,  QL, QR);	
-		compute_left_and_right_states(rhou, 1, i, rhou_slope, QL, QR);	
-		compute_left_and_right_states(E   , 2, i, E_slope,    QL, QR);	
+	// Compute left and right states. ie. for all the conservative variables
+	compute_left_and_right_states(rho,  0, i, rho_slope,  QL, QR);	
+	compute_left_and_right_states(rhou, 1, i, rhou_slope, QL, QR);	
+	compute_left_and_right_states(E   , 2, i, E_slope,    QL, QR);	
 
-		std::array<double,3> flux = llf_flux(QL[0], QL[1], QL[2], QR[0], QR[1], QR[2]);
+	std::array<double,3> flux = llf_flux(QL[0], QL[1], QL[2], QR[0], QR[1], QR[2]);
 
-		flux_rho[i] = flux[0]; 
-		flux_rhou[i] = flux[1]; 
-		flux_E[i] = flux[2]; 
+	flux_rho[i] = flux[0]; 
+	flux_rhou[i] = flux[1]; 
+	flux_E[i] = flux[2]; 
 }
 
 inline void state::write_solution(const int iter)
