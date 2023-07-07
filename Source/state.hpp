@@ -89,6 +89,57 @@ void compute_slopes(const std::vector<double> &var, std::vector<double> &slope);
 void boundary_conditions(dynamic_state& a_dyn_state);
 void apply_bc(std::vector<double>& a_var);
 
+inline void state::allocate_arrays()
+{
+	rho_slope.resize(sz+2*ng);
+	rhou_slope.resize(sz+2*ng);
+	E_slope.resize(sz+2*ng);
+
+	flux_rho.resize(sz+2*ng+1,0.0);
+	flux_rhou.resize(sz+2*ng+1,0.0);
+	flux_E.resize(sz+2*ng+1,0.0);
+}	
+
+inline void state::build_u_next(dynamic_state& u_next, int rank_me, int rank_n)
+{
+	// Do all internal cells that do not require communicated data
+
+	// Do boundary conditions
+	boundary_conditions(u_next, rank_me, rank_n);
+	
+	// Rank 0 and n-1 can do extra cells during this stage
+	int istart, iend;
+	if(rank_me==0){
+		istart = 2;
+		iend = sz-1;
+	}
+	else if(rank_me==rank_n-1){
+		istart = 2*ng;
+		iend = sz+ng-1;
+	}
+	else{
+		istart = 2*ng;
+		iend = sz-1;
+	}
+
+	// Compute all internal slopes
+	for(int i=istart-1; i<=iend+1; i++){
+		compute_limited_slopes_consvar(i);
+	}
+
+	// Compute all internal fluxes
+	for(int i=istart;i<=iend+1; i++){
+    	compute_flux(i);
+	}
+
+	// Compute all internal updates
+	for(int i=istart; i<=iend; i++){
+        u_next.rho[i]  = u_next.rho[i]  - dt*(flux_rho[i+1]-flux_rho[i])/dx;
+        u_next.rhou[i] = u_next.rhou[i] - dt*(flux_rhou[i+1]-flux_rhou[i])/dx;
+        u_next.E[i]    = u_next.E[i]    - dt*(flux_E[i+1]-flux_E[i])/dx;
+     }
+}
+
 inline state::msg_t state::make_message(uint id_me, uint id_to) {
 
 	std::array<std::array<double,3>,ng> arr;
@@ -170,56 +221,6 @@ inline state::bdry_t state::process_message(uint id_me, uint id_from, const msg_
 	return bdry_t(arr);
 }
 
-inline void state::allocate_arrays()
-{
-	rho_slope.resize(sz+2*ng);
-	rhou_slope.resize(sz+2*ng);
-	E_slope.resize(sz+2*ng);
-
-	flux_rho.resize(sz+2*ng+1,0.0);
-	flux_rhou.resize(sz+2*ng+1,0.0);
-	flux_E.resize(sz+2*ng+1,0.0);
-}	
-
-inline void state::build_u_next(dynamic_state& u_next, int rank_me, int rank_n)
-{
-	// Do all internal cells that do not require communicated data
-
-	// Do boundary conditions
-	boundary_conditions(u_next, rank_me, rank_n);
-	
-	// Rank 0 and n-1 can do extra cells during this stage
-	int istart, iend;
-	if(rank_me==0){
-		istart = 2;
-		iend = sz-1;
-	}
-	else if(rank_me==rank_n-1){
-		istart = 2*ng;
-		iend = sz+ng-1;
-	}
-	else{
-		istart = 2*ng;
-		iend = sz-1;
-	}
-
-	// Compute all internal slopes
-	for(int i=istart-1; i<=iend+1; i++){
-		compute_limited_slopes_consvar(i);
-	}
-
-	// Compute all internal fluxes
-	for(int i=istart;i<=iend+1; i++){
-    	compute_flux(i);
-	}
-
-	// Compute all internal updates
-	for(int i=istart; i<=iend; i++){
-        u_next.rho[i]  = u_next.rho[i]  - dt*(flux_rho[i+1]-flux_rho[i])/dx;
-        u_next.rhou[i] = u_next.rhou[i] - dt*(flux_rhou[i+1]-flux_rhou[i])/dx;
-        u_next.E[i]    = u_next.E[i]    - dt*(flux_E[i+1]-flux_E[i])/dx;
-     }
-}
 
 inline void state::lift_bdry(uint id_me, uint id_from, dynamic_state& u_next, const bdry_t& bdry)
 {
