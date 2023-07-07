@@ -69,6 +69,8 @@ int main(int argc, char* argv[]){
 	double time = 0.0;
 	int niter = t_end/dt;
 
+	////////// Actor replication begins 
+
 	bool has_left_bdry, has_right_bdry;
 	std::vector<BoundaryWrapper> distributed_boundaries;
 	std::vector<MPI_Request> send_request, receive_request;	
@@ -106,6 +108,9 @@ int main(int argc, char* argv[]){
 
 	int id = rank_me;
 
+	//////////// Actor replication ends
+
+	// Allocate space for variables
 	state_.allocate_arrays();
 	
 	// Time advance
