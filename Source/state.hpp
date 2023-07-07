@@ -67,6 +67,8 @@ struct dynamic_state {
     std::vector<double> rho,  rhou, E;
 };
 
+enum Side : unsigned char {left = 0, right = 1};
+
 class state{
 	using msg_t = Euler::msg_t;
 	using bdry_t = Euler::bdry_t;
@@ -74,14 +76,16 @@ class state{
         dynamic_state dynamic;
         std::vector<double> rho_slope, rhou_slope, E_slope;
         std::vector<double> flux_rho, flux_rhou, flux_E;
+		std::vector<Side> physical_boundaries;
 		void allocate_arrays();
 		msg_t make_message(uint id_from , uint id_to);
-        void build_u_next(dynamic_state& u_next, int rank_me, int rank_n);
+        void build_u_next(dynamic_state& u_next);
 		state::bdry_t process_message(uint id_me, uint id_from, const msg_t& msg );
         void lift_bdry(uint id_me, uint id_from, dynamic_state& u_next, const bdry_t& bdry);
         void compute_flux(int i);
         void compute_limited_slopes_consvar(int i);
-		void boundary_conditions(dynamic_state& a_dyn_state, int rank_me, int rank_n);
+		void boundary_conditions(dynamic_state& a_dyn_state);
+		void apply_bc(std::vector<double>& a_var);
         void write_solution(const int iter);
 };
 
@@ -100,22 +104,30 @@ inline void state::allocate_arrays()
 	flux_E.resize(sz+2*ng+1,0.0);
 }	
 
-inline void state::build_u_next(dynamic_state& u_next, int rank_me, int rank_n)
+inline void state::build_u_next(dynamic_state& u_next)
 {
 	// Do all internal cells that do not require communicated data
 
 	// Do boundary conditions
-	boundary_conditions(u_next, rank_me, rank_n);
+	boundary_conditions(u_next);
 	
 	// Rank 0 and n-1 can do extra cells during this stage
 	int istart, iend;
-	if(rank_me==0){
-		istart = 2;
-		iend = sz-1;
-	}
-	else if(rank_me==rank_n-1){
-		istart = 2*ng;
-		iend = sz+ng-1;
+	if(physical_boundaries.size()>0){
+		for(auto bdry: physical_boundaries){
+			if(bdry==left){
+				istart = 2;
+				iend = sz-1;
+			}
+			else if(bdry==right){
+				istart = 2*ng;
+				iend = sz+ng-1;
+			}
+			else{
+				std::cout << "Should not reach here in build_u_next. Exiting...." << "\n";
+				exit(1);
+			}
+		}
 	}
 	else{
 		istart = 2*ng;
@@ -334,24 +346,25 @@ inline void state::write_solution(const int iter)
     fclose(output_file);
 }
 
-inline void apply_bc(std::vector<double>& a_var, int rank_me, int rank_n)
+inline void state::apply_bc(std::vector<double>& a_var)
 {
-	if(rank_me==0){
+	for(auto bdry: physical_boundaries)
+	if(bdry == left){
 		for(int i=0;i<=ng-1;i++){
 			a_var[i] = a_var[ng];
 		}
 	}
-	else if(rank_me == rank_n-1){	
+	else if(bdry == right){	
 		for(int i=sz+ng;i<=sz+2*ng-1;i++){
 			a_var[i] = a_var[sz+ng-1];
 		}
 	}
 }
 
-inline void state::boundary_conditions(dynamic_state& a_dyn_state, int rank_me, int rank_n)
+inline void state::boundary_conditions(dynamic_state& a_dyn_state)
 {
-	apply_bc(a_dyn_state.rho, rank_me, rank_n);
-	apply_bc(a_dyn_state.rhou, rank_me, rank_n);
-	apply_bc(a_dyn_state.E, rank_me, rank_n);
+	apply_bc(a_dyn_state.rho);
+	apply_bc(a_dyn_state.rhou);
+	apply_bc(a_dyn_state.E);
 }
 }

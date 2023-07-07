@@ -88,7 +88,13 @@ int main(int argc, char* argv[]){
         has_right_bdry = true;
 	}
 
-
+	if(!has_left_bdry){
+		state_.physical_boundaries.push_back(left);
+	}
+	if(!has_right_bdry){
+		state_.physical_boundaries.push_back(right);
+	}
+		
 	size_t n_bdries = (bool)has_left_bdry + (bool)has_right_bdry;
     send_request.resize(n_bdries);
     receive_request.resize(n_bdries);
@@ -112,6 +118,7 @@ int main(int argc, char* argv[]){
 
 	// Allocate space for variables
 	state_.allocate_arrays();
+
 	
 	// Time advance
 	for(int iter=1; iter<=niter; iter++){
@@ -123,7 +130,7 @@ int main(int argc, char* argv[]){
     	MPI_Startall(send_request.size(), send_request.data());
     	MPI_Startall(receive_request.size(), receive_request.data());
 			
-		state_.build_u_next(state_.dynamic, rank_me, rank_n);
+		state_.build_u_next(state_.dynamic);
 
 		MPI_Waitall(send_request.size(), send_request.data(), MPI_STATUSES_IGNORE);
     	MPI_Waitall(receive_request.size(), receive_request.data(), MPI_STATUSES_IGNORE);
