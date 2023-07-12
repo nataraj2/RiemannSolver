@@ -335,7 +335,7 @@ inline void state::write_solution(const int iter)
 	for(int i = 0; i<rank_n; i++){
 		if(rank_me == i){	
     		for(int i=ng;i<=sz+ng-1; i++){
-        		fprintf(output_file, "%g %g %g %g\n",x[i], dynamic.rho[i], dynamic.rhou[i], dynamic.E[i]);
+        		fprintf(output_file, "%0.15g %0.15g %0.15g %0.15g\n",x[i], dynamic.rho[i], dynamic.rhou[i], dynamic.E[i]);
     		}
 			fflush(output_file);
 		}	
